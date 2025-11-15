@@ -32,7 +32,7 @@ def read_index():
     return index_path
 
 # --- Load model once at startup ---
-MODEL_PATH = os.path.join("model", "model.json")
+MODEL_PATH = os.path.join("model.json")
 booster = None
 
 def load_model(path=MODEL_PATH):
