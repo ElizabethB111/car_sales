@@ -1,8 +1,10 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from xgboost import XGBRegressor
 import numpy as np
 import os
+
 
 # -----------------------------------------------------------
 # Initialize FastAPI
@@ -11,7 +13,7 @@ app = FastAPI(title="Car Sales Forecast API")
 
 
 # -----------------------------------------------------------
-# Load the XGBoost model
+# Load XGBoost model
 # -----------------------------------------------------------
 MODEL_PATH = "model.json"
 
@@ -23,36 +25,93 @@ xgb_model.load_model(MODEL_PATH)
 
 
 # -----------------------------------------------------------
-# Pydantic schema for POST /predict
+# Data Model
 # -----------------------------------------------------------
 class SalesData(BaseModel):
     sales_data: list[float]
 
 
 # -----------------------------------------------------------
-# Root route — prevents 404s on Render
+# HTML Home Page
 # -----------------------------------------------------------
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 def home():
-    return {
-        "status": "online",
-        "message": "Car Sales Prediction API is running.",
-        "endpoints": {
-            "POST /predict": "Send 6 months of sales data to get a forecast."
-        }
-    }
+    return """
+    <html>
+        <head>
+            <title>Car Sales Forecast API</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    background-color: #f4f4f4;
+                    margin: 0;
+                    padding: 40px;
+                    text-align: center;
+                }
+                .card {
+                    max-width: 700px;
+                    margin: auto;
+                    background: white;
+                    padding: 40px;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+                }
+                h1 {
+                    color: #333;
+                    margin-bottom: 10px;
+                }
+                p {
+                    font-size: 18px;
+                    color: #555;
+                }
+                code {
+                    background: #eee;
+                    display: block;
+                    padding: 12px;
+                    border-radius: 8px;
+                    margin-top: 20px;
+                    text-align: left;
+                    font-size: 15px;
+                }
+                .footer {
+                    margin-top: 30px;
+                    font-size: 14px;
+                    color: #666;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <h1>🚗 Car Sales Forecast API</h1>
+                <p>This API uses machine learning (XGBoost) to forecast future vehicle sales.</p>
+
+                <p><strong>Prediction Endpoint:</strong></p>
+                <code>POST /predict</code>
+
+                <p>Send exactly 6 months of sales data:</p>
+                <code>
+                {
+                    "sales_data": [120, 135, 150, 160, 170, 185]
+                }
+                </code>
+
+                <p class="footer">Created with FastAPI · Hosted on Render</p>
+            </div>
+        </body>
+    </html>
+    """
 
 
 # -----------------------------------------------------------
-# Optional – stops favicon.ico 404 spam in logs
+# Optional – stop favicon errors in Render logs
 # -----------------------------------------------------------
 @app.get("/favicon.ico")
 def favicon():
-    return {"message": "No favicon"}
+    return {"message": "No favicon available"}
 
 
 # -----------------------------------------------------------
-# Prediction endpoint
+# Prediction Endpoint
 # -----------------------------------------------------------
 @app.post("/predict")
 def predict(data: SalesData):
@@ -63,30 +122,28 @@ def predict(data: SalesData):
             detail="Provide exactly 6 months of sales data."
         )
 
-    # Convert to numpy array (oldest → newest)
+    # Convert to numpy array (old → new)
     lag_features = np.array(data.sales_data[::-1])
 
-    # Feature engineering
+    # Rolling stats
     rolling_mean = np.mean(lag_features[-3:])
     rolling_std = np.std(lag_features[-3:])
 
-    # Dummy date features (can later be replaced with actual date context)
+    # Static date features (can be replaced later)
     year = 2025
     month = 11
     quarter = 4
     day = 1
 
-    # Final feature vector (must match your model training pipeline)
+    # Combine all features (must match training)
     features = np.concatenate([
-        lag_features,         # lag_1 ... lag_6
+        lag_features,         # Lag 6 months
         [year, month, quarter, day],
         [rolling_mean, rolling_std]
     ])
 
-    # Run model
     prediction = xgb_model.predict(features.reshape(1, -1))[0]
 
-    # Return clean response
     return {
         "prediction": round(float(prediction)),
         "input_used": data.sales_data
