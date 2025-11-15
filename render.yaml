@@ -1,7 +1,7 @@
 services:
   - type: web
     name: car-sales
-    env: python-3.11
+    env: python-3.13.4
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
