@@ -1,15 +1,20 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from xgboost import XGBRegressor
 import numpy as np
 import os
 
-
 # -----------------------------------------------------------
 # Initialize FastAPI
 # -----------------------------------------------------------
 app = FastAPI(title="Car Sales Forecast API")
+
+# -----------------------------------------------------------
+# Serve frontend folder (index.html lives here)
+# -----------------------------------------------------------
+app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
 
 
 # -----------------------------------------------------------
@@ -18,96 +23,37 @@ app = FastAPI(title="Car Sales Forecast API")
 MODEL_PATH = "model.json"
 
 if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(f"{MODEL_PATH} not found. Train the model first.")
+    raise FileNotFoundError("model.json not found — run train_model.py")
 
 xgb_model = XGBRegressor()
 xgb_model.load_model(MODEL_PATH)
 
 
 # -----------------------------------------------------------
-# Data Model
+# Pydantic Model for API Input
 # -----------------------------------------------------------
 class SalesData(BaseModel):
     sales_data: list[float]
 
 
 # -----------------------------------------------------------
-# HTML Home Page
+# Home Route → serves index.html form
 # -----------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
-def home():
-    return """
-    <html>
-        <head>
-            <title>Car Sales Forecast API</title>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    background-color: #f4f4f4;
-                    margin: 0;
-                    padding: 40px;
-                    text-align: center;
-                }
-                .card {
-                    max-width: 700px;
-                    margin: auto;
-                    background: white;
-                    padding: 40px;
-                    border-radius: 12px;
-                    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-                }
-                h1 {
-                    color: #333;
-                    margin-bottom: 10px;
-                }
-                p {
-                    font-size: 18px;
-                    color: #555;
-                }
-                code {
-                    background: #eee;
-                    display: block;
-                    padding: 12px;
-                    border-radius: 8px;
-                    margin-top: 20px;
-                    text-align: left;
-                    font-size: 15px;
-                }
-                .footer {
-                    margin-top: 30px;
-                    font-size: 14px;
-                    color: #666;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="card">
-                <h1>🚗 Car Sales Forecast API</h1>
-                <p>This API uses machine learning (XGBoost) to forecast future vehicle sales.</p>
-
-                <p><strong>Prediction Endpoint:</strong></p>
-                <code>POST /predict</code>
-
-                <p>Send exactly 6 months of sales data:</p>
-                <code>
-                {
-                    "sales_data": [120, 135, 150, 160, 170, 185]
-                }
-                </code>
-
-                <p class="footer">Created with FastAPI · Hosted on Render</p>
-            </div>
-        </body>
-    </html>
-    """
+def index():
+    try:
+        with open("frontend/index.html", "r") as f:
+            return f.read()
+    except Exception as e:
+        return f"<h1>Error loading index.html</h1><p>{e}</p>"
 
 
 # -----------------------------------------------------------
-# Optional – stop favicon errors in Render logs
+# Optional — avoid favicon errors
 # -----------------------------------------------------------
 @app.get("/favicon.ico")
 def favicon():
-    return {"message": "No favicon available"}
+    return {"message": "no favicon"}
 
 
 # -----------------------------------------------------------
@@ -115,36 +61,40 @@ def favicon():
 # -----------------------------------------------------------
 @app.post("/predict")
 def predict(data: SalesData):
-    # Validate input length
+
+    # Must be exactly six months
     if len(data.sales_data) != 6:
         raise HTTPException(
             status_code=400,
             detail="Provide exactly 6 months of sales data."
         )
 
-    # Convert to numpy array (old → new)
+    # Reverse to match training lag order  
+    # (model expects lag_1 = last month, lag_6 = oldest)
     lag_features = np.array(data.sales_data[::-1])
 
-    # Rolling stats
+    # Rolling features (same as training)
     rolling_mean = np.mean(lag_features[-3:])
     rolling_std = np.std(lag_features[-3:])
 
-    # Static date features (can be replaced later)
+    # Static date features (training used actual dates)
     year = 2025
     month = 11
     quarter = 4
     day = 1
 
-    # Combine all features (must match training)
+    # Final feature vector (must match train_model.py)
     features = np.concatenate([
-        lag_features,         # Lag 6 months
+        lag_features,
         [year, month, quarter, day],
         [rolling_mean, rolling_std]
     ])
 
+    # Generate prediction
     prediction = xgb_model.predict(features.reshape(1, -1))[0]
 
     return {
         "prediction": round(float(prediction)),
         "input_used": data.sales_data
     }
+
