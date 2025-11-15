@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Car Sales Forecast</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .input-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .month-input {
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+            text-align: center;
+        }
+
+        .month-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .month-label {
+            font-size: 0.85em;
+            color: #666;
+            text-align: center;
+            margin-top: 5px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            text-align: center;
+            display: none;
+        }
+
+        .result.success {
+            display: block;
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .result.error {
+            display: block;
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .prediction-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #28a745;
+            margin: 10px 0;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .instructions {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+            color: #0066cc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚗 Car Sales Forecast</h1>
+            <p>Enter the last 6 months of sales data to predict next month's sales</p>
+        </div>
+
+        <div class="instructions">
+            <strong>How to use:</strong> Enter the sales numbers for the last 6 months (most recent first). 
+            The model will predict the sales for the upcoming month.
+        </div>
+
+        <form id="predictionForm">
+            <div class="form-group">
+                <label>Last 6 Months Sales Data:</label>
+                <div class="input-grid">
+                    <div>
+                        <input type="number" class="month-input" placeholder="Sales" min="0" step="1" required 
+                               id="month1" name="month1">
+                        <div class="month-label">Month 1 (Most Recent)</div>
+                    </div>
+                    <div>
+                        <input type="number" class="month-input" placeholder="Sales" min="0" step="1" required
+                               id="month2" name="month2">
+                        <div class="month-label">Month 2</div>
+                    </div>
+                    <div>
+                        <input type="number" class="month-input" placeholder="Sales" min="0" step="1" required
+                               id="month3" name="month3">
+                        <div class="month-label">Month 3</div>
+                    </div>
+                    <div>
+                        <input type="number" class="month-input" placeholder="Sales" min="0" step="1" required
+                               id="month4" name="month4">
+                        <div class="month-label">Month 4</div>
+                    </div>
+                    <div>
+                        <input type="number" class="month-input" placeholder="Sales" min="0" step="1" required
+                               id="month5" name="month5">
+                        <div class="month-label">Month 5</div>
+                    </div>
+                    <div>
+                        <input type="number" class="month-input" placeholder="Sales" min="0" step="1" required
+                               id="month6" name="month6">
+                        <div class="month-label">Month 6 (Oldest)</div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn">Predict Next Month's Sales</button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Making prediction...</p>
+        </div>
+
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const form = e.target;
+            const resultDiv = document.getElementById('result');
+            const loadingDiv = document.getElementById('loading');
+            
+            // Show loading, hide previous results
+            loadingDiv.style.display = 'block';
+            resultDiv.style.display = 'none';
+            resultDiv.className = 'result';
+            
+            try {
+                // Collect sales data from form
+                const salesData = [
+                    parseFloat(form.month1.value),
+                    parseFloat(form.month2.value),
+                    parseFloat(form.month3.value),
+                    parseFloat(form.month4.value),
+                    parseFloat(form.month5.value),
+                    parseFloat(form.month6.value)
+                ];
+                
+                // Validate all inputs are numbers
+                if (salesData.some(isNaN)) {
+                    throw new Error('Please enter valid numbers for all months');
+                }
+                
+                // Make prediction request
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sales_data: salesData
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Prediction failed');
+                }
+                
+                // Display success result
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `
+                    <h3>📈 Prediction Result</h3>
+                    <div class="prediction-value">${Math.round(data.prediction)} units</div>
+                    <p>Expected sales for next month</p>
+                    <p><small>Based on your input data</small></p>
+                `;
+                
+            } catch (error) {
+                // Display error result
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <h3>❌ Error</h3>
+                    <p>${error.message}</p>
+                `;
+            } finally {
+                loadingDiv.style.display = 'none';
+                resultDiv.style.display = 'block';
+            }
+        });
+
+        // Add input validation
+        document.querySelectorAll('.month-input').forEach(input => {
+            input.addEventListener('input', function() {
+                if (this.value < 0) {
+                    this.value = 0;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
